@@ -339,7 +339,7 @@ async function loadAll() {
   try {
     [tickets, agents, articles] = await Promise.all([
       sbFetch('/tickets?select=*'),
-      sbFetch('/agents?select=*&eq.active=true'),
+      sbFetch('/agents?select=*&active=eq.true'),
       sbFetch('/kb_articles?select=*&order=updated_at.desc')
     ]);
     tickets = tickets || []; agents = agents || []; articles = articles || [];
