@@ -80,12 +80,146 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSyncStatus();
 
   if (supabaseKey) {
-    loadEmployees().then(() => loadTickets());
+    loadEmployees().then(() => loadTickets()).then(() => {
+      startRealtimeSync();
+    });
   } else {
     showListError('Enter your Supabase anon key to load tickets.');
     filterTickets();
   }
 });
+
+// ── Realtime Sync ──────────────────────────────────────────────────────────
+
+let realtimeSocket = null;
+let pollInterval = null;
+
+function startRealtimeSync() {
+  // Try Supabase Realtime WebSocket first
+  try {
+    const wsUrl = `wss://xphtitfasgstjvqkkdvs.supabase.co/realtime/v1/websocket?apikey=${supabaseKey}&vsn=1.0.0`;
+    realtimeSocket = new WebSocket(wsUrl);
+
+    realtimeSocket.onopen = () => {
+      // Join the tickets table channel
+      realtimeSocket.send(JSON.stringify({
+        topic: 'realtime:public:tickets',
+        event: 'phx_join',
+        payload: { config: { broadcast: { self: false }, postgres_changes: [{ event: '*', schema: 'public', table: 'tickets' }] } },
+        ref: '1'
+      }));
+      console.log('[Realtime] Connected');
+      setSyncIndicator('realtime');
+    };
+
+    realtimeSocket.onmessage = async (e) => {
+      const msg = JSON.parse(e.data);
+      const payload = msg.payload;
+
+      if (msg.event === 'postgres_changes' || (payload?.data?.type)) {
+        const changeType = payload?.data?.type || payload?.type;
+        const record = payload?.data?.record || payload?.record;
+        const oldRecord = payload?.data?.old_record || payload?.old_record;
+
+        if (changeType === 'INSERT' && record) {
+          // New ticket submitted — add to list
+          if (!tickets.find(t => t.id === record.id)) {
+            tickets.unshift(record);
+            filterTickets();
+            showToast(`🎫 New ticket: ${record.id} — ${record.title?.slice(0, 40)}`);
+          }
+        } else if (changeType === 'UPDATE' && record) {
+          // Ticket updated externally
+          const idx = tickets.findIndex(t => t.id === record.id);
+          if (idx !== -1) {
+            tickets[idx] = { ...tickets[idx], ...record };
+            filterTickets();
+            if (selectedId === record.id) selectTicket(record.id);
+          }
+        } else if (changeType === 'DELETE' && oldRecord) {
+          // Ticket deleted externally
+          tickets = tickets.filter(t => t.id !== oldRecord.id);
+          if (selectedId === oldRecord.id) {
+            selectedId = null;
+            document.getElementById('detail-pane').innerHTML = `<div class="empty-state"><div class="empty-title">Ticket was deleted</div></div>`;
+          }
+          filterTickets();
+        }
+      }
+
+      // Respond to heartbeat
+      if (msg.event === 'heartbeat') {
+        realtimeSocket.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: null }));
+      }
+    };
+
+    realtimeSocket.onerror = () => {
+      console.warn('[Realtime] WebSocket error — falling back to polling');
+      startPolling();
+    };
+
+    realtimeSocket.onclose = () => {
+      console.warn('[Realtime] WebSocket closed — falling back to polling');
+      setSyncIndicator('polling');
+      startPolling();
+    };
+
+  } catch(e) {
+    console.warn('[Realtime] Could not connect — falling back to polling');
+    startPolling();
+  }
+}
+
+function startPolling() {
+  if (pollInterval) return; // already polling
+  setSyncIndicator('polling');
+  pollInterval = setInterval(async () => {
+    try {
+      const data = await sbFetch('/tickets?select=*&order=created.desc');
+      const incoming = data || [];
+
+      // Check for new tickets
+      const existingIds = new Set(tickets.map(t => t.id));
+      const newTickets = incoming.filter(t => !existingIds.has(t.id));
+
+      if (newTickets.length > 0) {
+        newTickets.forEach(t => tickets.unshift(t));
+        filterTickets();
+        newTickets.forEach(t => showToast(`🎫 New ticket: ${t.id} — ${t.title?.slice(0, 40)}`));
+      }
+
+      // Check for updates to existing tickets
+      let updated = false;
+      incoming.forEach(incoming => {
+        const idx = tickets.findIndex(t => t.id === incoming.id);
+        if (idx !== -1 && JSON.stringify(tickets[idx]) !== JSON.stringify(incoming)) {
+          tickets[idx] = incoming;
+          updated = true;
+        }
+      });
+
+      if (updated) filterTickets();
+    } catch(e) {
+      console.warn('[Poll] Failed:', e.message);
+    }
+  }, 15000); // poll every 15 seconds
+}
+
+function setSyncIndicator(mode) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if (mode === 'realtime') {
+    dot.style.background = 'var(--green)';
+    label.textContent = 'Live';
+    label.style.color = 'var(--green)';
+    dot.style.animation = 'pulse 2s infinite';
+  } else {
+    dot.style.background = 'var(--blue)';
+    label.textContent = 'Syncing…';
+    label.style.color = 'var(--blue)';
+    dot.style.animation = 'none';
+  }
+}
 
 function updateSyncStatus() {
   const dot = document.getElementById('sync-dot');
