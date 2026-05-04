@@ -32,8 +32,10 @@ async function sbFetch(path, options = {}) {
     const err = await resp.json().catch(() => ({}));
     throw new Error(err.message || err.hint || `HTTP ${resp.status}`);
   }
-  if (resp.status === 204) return null;
-  return resp.json();
+  if (resp.status === 204 || resp.headers.get('content-length') === '0') return null;
+  const text = await resp.text();
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 async function loadTickets() {
