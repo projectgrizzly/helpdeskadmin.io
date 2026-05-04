@@ -9,7 +9,8 @@ let selectedId = null;
 let currentView = 'all';
 let aiCache = {};
 let apiKey = localStorage.getItem('hd_api_key') || '';
-let supabaseKey = localStorage.getItem('hd_supabase_key') || '';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwaHRpdGZhc2dzdGp2cWtrZHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDQsImV4cCI6MjA5MzQ5MDMwNH0.sjjsfDCeiEWPih2f3eH5rShhvEZZXgS3ApcSy0B0S-M';
+let supabaseKey = localStorage.getItem('hd_supabase_key') || SUPABASE_ANON_KEY;
 
 // ── Supabase Helpers ───────────────────────────────────────────────────────
 
@@ -79,14 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateSyncStatus();
 
-  if (supabaseKey) {
-    loadEmployees().then(() => loadTickets()).then(() => {
-      startRealtimeSync();
-    });
-  } else {
-    showListError('Enter your Supabase anon key to load tickets.');
-    filterTickets();
-  }
+  loadEmployees().then(() => loadTickets()).then(() => {
+    startRealtimeSync();
+  });
 });
 
 // ── Realtime Sync ──────────────────────────────────────────────────────────
@@ -328,11 +324,10 @@ function selectTicket(id) {
   const t = tickets.find(x => x.id === id);
   if (!t) return;
 
-  const configNotice = (!apiKey || !supabaseKey) ? `
+  const configNotice = !apiKey ? `
     <div class="api-notice">
       <strong>Setup required</strong>
-      ${!supabaseKey ? `<div style="margin-top:8px">Supabase anon key missing — changes won't persist.<div class="api-key-field"><input type="password" id="sb-key-input" placeholder="eyJ…"><button onclick="saveSupabaseKey()">Save DB key</button></div></div>` : ''}
-      ${!apiKey ? `<div style="margin-top:8px">Anthropic key missing — AI features disabled.<div class="api-key-field"><input type="password" id="api-key-input" placeholder="sk-ant-…"><button onclick="saveApiKey()">Save AI key</button></div></div>` : ''}
+      <div style="margin-top:8px">Anthropic key missing — AI features disabled.<div class="api-key-field"><input type="password" id="api-key-input" placeholder="sk-ant-…"><button onclick="saveApiKey()">Save AI key</button></div></div>
     </div>
   ` : '';
 
