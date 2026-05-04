@@ -128,6 +128,75 @@ async function checkSession() {
 
 checkSession();
 
+// Handle invite/recovery links — Supabase appends tokens to the URL hash
+async function handleInviteToken() {
+  const hash = window.location.hash;
+  if (!hash) return;
+
+  const params = new URLSearchParams(hash.replace('#', ''));
+  const accessToken  = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  const type         = params.get('type'); // 'invite' or 'recovery'
+
+  if (!accessToken) return;
+
+  // Save session directly from the invite link
+  const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${accessToken}` }
+  });
+
+  if (userResp.ok) {
+    const user = await userResp.json();
+    localStorage.setItem('hd_session', JSON.stringify({
+      access_token:  accessToken,
+      refresh_token: refreshToken,
+      user,
+      expires_at: Date.now() + 3600 * 1000
+    }));
+
+    if (type === 'invite') {
+      // Show set-password form for new invitees
+      showSetPasswordForm(accessToken);
+    } else {
+      window.location.replace('/');
+    }
+  }
+}
+
+function showSetPasswordForm(token) {
+  document.querySelector('h1').textContent = 'Set your password';
+  document.querySelector('.subtitle').textContent = 'Welcome! Choose a password to secure your account.';
+  document.getElementById('email').closest('.field').style.display = 'none';
+  document.getElementById('signin-btn').textContent = 'Set password & sign in';
+  document.getElementById('signin-btn').onclick = () => setPassword(token);
+}
+
+async function setPassword(token) {
+  const password = document.getElementById('password').value;
+  if (!password || password.length < 6) return showError('Password must be at least 6 characters.');
+
+  const btn = document.getElementById('signin-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Setting password…';
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+
+    if (!resp.ok) throw new Error('Failed to set password');
+    window.location.replace('/');
+  } catch(e) {
+    showError(e.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Set password & sign in';
+  }
+}
+
+handleInviteToken();
+
 function showError(msg) {
   const el = document.getElementById('error-msg');
   el.textContent = msg;
