@@ -2,7 +2,7 @@
 
 const SUPABASE_URL = 'https://xphtitfasgstjvqkkdvs.supabase.co/rest/v1';
 
-const PRIORITY_ORDER = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
+const PRIORITY_ORDER = { Urgent: 0, High: 1, Normal: 2, Low: 3, Info: 4 };
 
 let tickets = [];
 let selectedId = null;
@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await initAuth();
 
+  loadDepartmentsAndLocations();
   loadEmployees().then(() => loadTickets()).then(() => {
     startRealtimeSync();
   });
@@ -362,6 +363,7 @@ function selectTicket(id) {
       <div class="meta-card">
         <label>Requester</label>
         <div class="meta-val">${escHtml(t.requester || '—')}</div>
+        ${t.requester_email ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px">${escHtml(t.requester_email)}</div>` : ''}
       </div>
       <div class="meta-card">
         <label>Status</label>
@@ -375,6 +377,54 @@ function selectTicket(id) {
         <label>Assigned To</label>
         ${populateReassignSelect(t.id, t.assigned || '')}
       </div>
+      <div class="meta-card">
+        <label>Department</label>
+        <div class="meta-val">${escHtml(t.department || '—')}</div>
+      </div>
+      <div class="meta-card">
+        <label>Location</label>
+        <div class="meta-val">${escHtml(t.location || '—')}</div>
+      </div>
+      <div class="meta-card">
+        <label>Due Date</label>
+        <div class="meta-val">${t.due_date ? new Date(t.due_date).toLocaleDateString() : '—'}</div>
+      </div>
+    </div>
+
+    <!-- What details -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="meta-card">
+        <label>Device Type</label>
+        <div class="meta-val">${escHtml(t.device_type || '—')}</div>
+      </div>
+      <div class="meta-card">
+        <label>Software Type</label>
+        <div class="meta-val">${escHtml(t.software_type || '—')}</div>
+      </div>
+      <div class="meta-card">
+        <label>Subcategory</label>
+        <div class="meta-val">${escHtml(t.subcategory || '—')}</div>
+      </div>
+    </div>
+
+    <!-- Who Will -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="meta-card">
+        <label>Escalation</label>
+        <select onchange="updateTicketField('${escHtml(t.id)}','escalation_level',this.value)">
+          ${['None','Level 1','Level 2','Manufacturer'].map(l =>
+            `<option${t.escalation_level===l?' selected':''}>${l}</option>`
+          ).join('')}
+        </select>
+      </div>
+      <div class="meta-card">
+        <label>Content Expert</label>
+        <div class="meta-val">${escHtml(t.content_expert || '—')}</div>
+      </div>
+      <div class="meta-card">
+        <label>Regulation</label>
+        <div class="meta-val">${escHtml(t.regulation || 'None')}</div>
+      </div>
     </div>
 
     <div class="section-label">Description</div>
@@ -386,6 +436,28 @@ function selectTicket(id) {
       </div>
       <div class="ai-content" id="ai-content-${escHtml(t.id)}">
         <div class="ai-loading"><div class="spinner"></div> Analyzing ticket…</div>
+      </div>
+    </div>
+
+    <div class="resolution-box" id="resolution-box-${escHtml(t.id)}">
+      <div class="section-label" style="color:var(--green);margin-bottom:12px">
+        📋 Resolution Documentation — How?
+      </div>
+      <div class="resolution-field">
+        <label>What was the problem?</label>
+        <textarea placeholder="Describe the root cause…" onchange="updateTicketField('${escHtml(t.id)}','resolution_what',this.value)">${escHtml(t.resolution_what||'')}</textarea>
+      </div>
+      <div class="resolution-field">
+        <label>Who was affected?</label>
+        <input type="text" placeholder="User, department, or system affected…" value="${escHtml(t.resolution_who||'')}" onchange="updateTicketField('${escHtml(t.id)}','resolution_who',this.value)">
+      </div>
+      <div class="resolution-field">
+        <label>How was it fixed?</label>
+        <textarea placeholder="Steps taken to resolve…" onchange="updateTicketField('${escHtml(t.id)}','resolution_how',this.value)">${escHtml(t.resolution_how||'')}</textarea>
+      </div>
+      <div class="resolution-field">
+        <label>Additional Notes</label>
+        <textarea placeholder="Any extra context, follow-up actions, or links…" onchange="updateTicketField('${escHtml(t.id)}','resolution_notes',this.value)">${escHtml(t.resolution_notes||'')}</textarea>
       </div>
     </div>
 
@@ -550,6 +622,17 @@ async function deleteTicket(id) {
   }
 }
 
+async function updateTicketField(id, field, value) {
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  t[field] = value;
+  try {
+    await patchTicket(id, { [field]: value });
+  } catch(e) {
+    showToast(`Error saving: ${e.message}`);
+  }
+}
+
 function sendReply(id) {
   const ta = document.getElementById('reply-' + id);
   if (!ta || !ta.value.trim()) return;
@@ -569,7 +652,10 @@ function addNote(id) {
 function openModal() {
   document.getElementById('modal').style.display = 'flex';
   populateAssignDropdown();
-  setTimeout(() => document.getElementById('new-title').focus(), 100);
+  populateContentExpert();
+  populateDeptLocation();
+  updateSubcategory();
+  setTimeout(() => document.getElementById('new-requester').focus(), 100);
 }
 
 function closeModal() {
@@ -591,10 +677,21 @@ async function createTicket() {
     id,
     title,
     requester,
+    requester_email: document.getElementById('new-requester-email')?.value.trim() || '',
     priority:    document.getElementById('new-priority').value,
     status:      'open',
     category:    document.getElementById('new-category').value,
+    subcategory: document.getElementById('new-subcategory')?.value || '',
+    device_type: document.getElementById('new-device-type')?.value || '',
+    software_type: document.getElementById('new-software-type')?.value || '',
+    department:  document.getElementById('new-department')?.value || '',
+    location:    document.getElementById('new-location')?.value || '',
+    due_date:    document.getElementById('new-due-date')?.value || null,
+    regulation:  document.getElementById('new-regulation')?.value || '',
+    source:      document.getElementById('new-source')?.value || 'manual',
     assigned:    document.getElementById('new-assigned').value,
+    content_expert: document.getElementById('new-content-expert')?.value || '',
+    escalation_level: document.getElementById('new-escalation-level')?.value || 'None',
     created:     new Date().toISOString().slice(0, 10),
     description: document.getElementById('new-desc').value.trim() || 'No description provided.'
   };
@@ -1329,4 +1426,59 @@ function shouldNotify(type) {
   if (type === 'resolved') return !!prefs.notify_resolved;
   if (type === 'chat')     return prefs.notify_chat !== false;
   return true;
+}
+
+// ── Subcategories ──────────────────────────────────────────────────────────
+
+const SUBCATEGORIES = {
+  Hardware: ['Laptop','Desktop','Printer','Monitor','Keyboard/Mouse','Server','Network Equipment','Other'],
+  Software: ['Installation','Crash/Error','Performance','Update/Upgrade','License','Configuration','Other'],
+  Network:  ['VPN','WiFi','Internet','DNS','Firewall','Cable/Physical','Other'],
+  Account:  ['Password Reset','Account Locked','New Account','Permissions','MFA','Other'],
+  Other:    ['General Inquiry','Other']
+};
+
+function updateSubcategory(selectedVal = '') {
+  const cat = document.getElementById('new-category')?.value || 'Other';
+  const sel = document.getElementById('new-subcategory');
+  if (!sel) return;
+  const opts = SUBCATEGORIES[cat] || SUBCATEGORIES['Other'];
+  sel.innerHTML = '<option value="">— Select —</option>' +
+    opts.map(o => `<option${o === selectedVal ? ' selected' : ''}>${o}</option>`).join('');
+}
+
+// ── Departments & Locations ────────────────────────────────────────────────
+
+let departmentsCache = [];
+let locationsCache   = [];
+
+async function loadDepartmentsAndLocations() {
+  try {
+    [departmentsCache, locationsCache] = await Promise.all([
+      sbFetch('/departments?select=*&active=eq.true&order=name.asc'),
+      sbFetch('/locations?select=*&active=eq.true&order=name.asc')
+    ]);
+    departmentsCache = departmentsCache || [];
+    locationsCache   = locationsCache   || [];
+  } catch(e) { console.warn('Failed to load dept/locations:', e); }
+}
+
+function populateDeptLocation() {
+  const deptSel = document.getElementById('new-department');
+  const locSel  = document.getElementById('new-location');
+  if (deptSel) {
+    deptSel.innerHTML = '<option value="">— Select —</option>' +
+      departmentsCache.map(d => `<option>${escHtml(d.name)}</option>`).join('');
+  }
+  if (locSel) {
+    locSel.innerHTML = '<option value="">— Select —</option>' +
+      locationsCache.map(l => `<option>${escHtml(l.name)}</option>`).join('');
+  }
+}
+
+function populateContentExpert() {
+  const sel = document.getElementById('new-content-expert');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— None —</option>' +
+    employeesCache.filter(e => e.active).map(e => `<option>${escHtml(e.name)}</option>`).join('');
 }

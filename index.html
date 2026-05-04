@@ -166,48 +166,142 @@
 
 <!-- New Ticket Modal -->
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
+  <div class="modal" style="width:620px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <div class="modal-title">Create New Ticket</div>
       <button class="modal-close" onclick="closeModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" style="overflow-y:auto">
+
+      <!-- WHO -->
+      <div class="form-section-label">Who — Requester Info</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Requester Name <span class="required">*</span></label>
+          <input type="text" id="new-requester" placeholder="Full name">
+        </div>
+        <div class="field">
+          <label>Requester Email</label>
+          <input type="email" id="new-requester-email" placeholder="email@company.com">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Department</label>
+          <select id="new-department"><option value="">— Select —</option></select>
+        </div>
+        <div class="field">
+          <label>Location</label>
+          <select id="new-location"><option value="">— Select —</option></select>
+        </div>
+      </div>
+
+      <!-- WHAT -->
+      <div class="form-section-label">What — Problem Statement</div>
       <div class="field">
         <label>Issue Title <span class="required">*</span></label>
         <input type="text" id="new-title" placeholder="Brief, specific description of the issue">
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Requester <span class="required">*</span></label>
-          <input type="text" id="new-requester" placeholder="Name or email">
-        </div>
-        <div class="field">
           <label>Category</label>
-          <select id="new-category">
+          <select id="new-category" onchange="updateSubcategory()">
             <option>Hardware</option><option>Software</option><option>Network</option><option>Account</option><option>Other</option>
           </select>
+        </div>
+        <div class="field">
+          <label>Subcategory</label>
+          <select id="new-subcategory"><option value="">— Select —</option></select>
         </div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label>Priority</label>
-          <select id="new-priority">
-            <option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option>
+          <label>Device Type</label>
+          <select id="new-device-type">
+            <option value="">— N/A —</option>
+            <option>Laptop</option><option>Desktop</option><option>Smartphone</option>
+            <option>Tablet</option><option>Server</option><option>Printer</option><option>Other</option>
           </select>
         </div>
         <div class="field">
-          <label>Assign To</label>
-          <select id="new-assigned">
-            <option value="">— Unassigned —</option>
+          <label>Software Type</label>
+          <select id="new-software-type">
+            <option value="">— N/A —</option>
+            <option>Third Party</option><option>In-House</option>
+            <option>Operating System</option><option>Other</option>
           </select>
         </div>
       </div>
       <div class="field">
-        <label>Description</label>
-        <textarea id="new-desc" placeholder="Detailed description of the issue, steps to reproduce, impact…"></textarea>
+        <label>Description <span class="required">*</span></label>
+        <textarea id="new-desc" placeholder="Detailed description — what happened, what was expected, error messages…"></textarea>
       </div>
+
+      <!-- WHEN / PRIORITY -->
+      <div class="form-section-label">When — Priority & Timeline</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Priority</label>
+          <select id="new-priority">
+            <option>Urgent</option><option>High</option><option selected>Normal</option>
+            <option>Low</option><option>Info</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Due Date</label>
+          <input type="date" id="new-due-date">
+        </div>
+      </div>
+
+      <!-- WHERE / WHY -->
+      <div class="form-section-label">Why — Compliance & Regulation</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Regulation</label>
+          <select id="new-regulation">
+            <option value="">None</option>
+            <option value="State">State Regulation</option>
+            <option value="Federal">Federal Regulation</option>
+            <option value="Industrial">Industrial Standard</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Source</label>
+          <select id="new-source">
+            <option value="manual">Manual (Admin)</option>
+            <option value="form">Submission Form</option>
+            <option value="email">Email</option>
+            <option value="api">API</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- WHO WILL -->
+      <div class="form-section-label">Who Will — Assignment & Escalation</div>
+      <div class="field-row">
+        <div class="field">
+          <label>Assign To</label>
+          <select id="new-assigned"><option value="">— Unassigned —</option></select>
+        </div>
+        <div class="field">
+          <label>Content Expert</label>
+          <select id="new-content-expert"><option value="">— None —</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Escalation Level</label>
+          <select id="new-escalation-level">
+            <option value="None">None</option>
+            <option value="Level 1">Level 1 Tech</option>
+            <option value="Level 2">Level 2 Tech</option>
+            <option value="Manufacturer">Hardware Manufacturer</option>
+          </select>
+        </div>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="closeModal()">Cancel</button>

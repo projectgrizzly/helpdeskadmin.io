@@ -1243,3 +1243,32 @@ body {
   cursor: pointer; transition: background .1s;
 }
 .nav-filter-item:hover { background: var(--surface-2); color: var(--text); }
+
+/* ── Form section labels ─────────────────────────────────────────────────── */
+.form-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px; margin: 18px 0 12px;
+}
+.form-section-label:first-child { margin-top: 0; }
+
+/* ── Resolution notes ────────────────────────────────────────────────────── */
+.resolution-box {
+  background: var(--green-bg); border: 1px solid var(--green-border);
+  border-radius: var(--radius-lg); padding: 16px; margin-bottom: 20px;
+}
+.resolution-box .section-label { color: var(--green); margin-bottom: 12px; }
+.resolution-field { margin-bottom: 10px; }
+.resolution-field label { display:block; font-size:11px; font-weight:600; color: var(--green); margin-bottom:4px; letter-spacing:.04em; text-transform:uppercase; }
+.resolution-field textarea, .resolution-field input {
+  width:100%; padding:8px 10px; border:1px solid var(--green-border);
+  border-radius:var(--radius); font-size:13px; font-family:var(--font);
+  background:var(--surface); color:var(--text); outline:none; resize:vertical;
+  transition: border-color .15s;
+}
+.resolution-field textarea:focus, .resolution-field input:focus { border-color: var(--green); }
+.resolution-field textarea { min-height: 70px; }
+
+/* ── Info priority pill ──────────────────────────────────────────────────── */
+.pill-info { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
