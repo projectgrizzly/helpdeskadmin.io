@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.nav-item').forEach(el => {
     el.addEventListener('click', e => {
+      if (el.getAttribute('href') && el.getAttribute('href') !== '#') return; // let real links navigate
       e.preventDefault();
       setView(el.dataset.view);
     });
