@@ -944,3 +944,226 @@ async function deleteEmployee(id, name) {
     showToast(`Error: ${e.message}`);
   }
 }
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+
+const REALTIME_URL = 'wss://xphtitfasgstjvqkkdvs.supabase.co/realtime/v1/websocket';
+
+let chatOpen = false;
+let channels = [];
+let activeChannelId = null;
+let activeChannelName = 'general';
+let chatMessages = [];
+let chatSocket = null;
+let unreadCount = 0;
+let lastSender = null;
+let lastMsgTime = null;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chat-panel');
+  const detailPane = document.getElementById('detail-pane');
+  panel.style.display = chatOpen ? 'flex' : 'none';
+  detailPane.style.display = chatOpen ? 'none' : 'flex';
+  if (chatOpen) {
+    resetUnread();
+    loadChannels();
+    startChatRealtime();
+    loadSenderName();
+  } else {
+    if (chatSocket) { chatSocket.close(); chatSocket = null; }
+  }
+}
+
+function loadSenderName() {
+  const saved = localStorage.getItem('hd_chat_name') || '';
+  document.getElementById('chat-sender-name').value = saved;
+  document.getElementById('chat-sender-name').addEventListener('change', e => {
+    localStorage.setItem('hd_chat_name', e.target.value.trim());
+  });
+}
+
+function getSenderName() {
+  const name = document.getElementById('chat-sender-name')?.value.trim();
+  if (!name) { showToast('Enter your name in the chat panel first'); return null; }
+  localStorage.setItem('hd_chat_name', name);
+  return name;
+}
+
+async function loadChannels() {
+  try {
+    const data = await sbFetch('/channels?select=*&order=name.asc');
+    channels = data || [];
+    renderChannelList();
+    if (channels.length && !activeChannelId) {
+      selectChannel(channels[0].id, channels[0].name, channels[0].description);
+    }
+  } catch(e) { console.error('Failed to load channels:', e); }
+}
+
+function renderChannelList() {
+  document.getElementById('channel-list').innerHTML = channels.map(c => `
+    <div class="channel-item${c.id === activeChannelId ? ' active' : ''}" onclick="selectChannel(${c.id}, '${escHtml(c.name)}', '${escHtml(c.description || '')}')">
+      <span style="color:var(--text-3)">#</span> ${escHtml(c.name)}
+    </div>
+  `).join('');
+
+  // Render agents
+  document.getElementById('chat-agent-list').innerHTML = employeesCache
+    .filter(e => e.active)
+    .map(e => `
+      <div class="chat-agent-item">
+        <div class="agent-dot" style="background:var(--green)"></div>
+        ${escHtml(e.name)}
+      </div>
+    `).join('') || '<div style="padding:4px 12px;font-size:12px;color:var(--text-3)">No agents</div>';
+}
+
+async function selectChannel(id, name, desc) {
+  activeChannelId = id;
+  activeChannelName = name;
+  document.getElementById('chat-channel-name').textContent = `# ${name}`;
+  document.getElementById('chat-channel-desc').textContent = desc || '';
+  document.getElementById('chat-input').placeholder = `Message #${name}…`;
+  renderChannelList();
+  await loadMessages();
+
+  // Re-subscribe to new channel
+  if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
+    chatSocket.send(JSON.stringify({
+      topic: `realtime:public:messages:channel_id=eq.${id}`,
+      event: 'phx_join',
+      payload: { config: { broadcast: { self: true }, postgres_changes: [{ event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${id}` }] } },
+      ref: '2'
+    }));
+  }
+}
+
+async function loadMessages() {
+  const el = document.getElementById('chat-messages');
+  if (!activeChannelId) return;
+  el.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px 20px">Loading…</div>';
+  try {
+    const data = await sbFetch(`/messages?channel_id=eq.${activeChannelId}&select=*&order=created_at.asc&limit=100`);
+    chatMessages = data || [];
+    renderMessages();
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px;padding:20px">Failed to load messages: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderMessages() {
+  const el = document.getElementById('chat-messages');
+  const mySenderName = localStorage.getItem('hd_chat_name') || '';
+
+  if (!chatMessages.length) {
+    el.innerHTML = `<div style="text-align:center;color:var(--text-3);font-size:13px;padding:40px 20px">No messages yet. Say hello! 👋</div>`;
+    return;
+  }
+
+  let html = '';
+  let prevSender = null;
+  let prevDate = null;
+
+  chatMessages.forEach(msg => {
+    const date = new Date(msg.created_at);
+    const dateStr = date.toLocaleDateString('en', { weekday:'long', month:'short', day:'numeric' });
+    const timeStr = date.toLocaleTimeString('en', { hour:'numeric', minute:'2-digit' });
+    const isOwn = msg.sender === mySenderName;
+
+    if (dateStr !== prevDate) {
+      html += `<div class="msg-date-divider">${dateStr}</div>`;
+      prevDate = dateStr;
+      prevSender = null;
+    }
+
+    const showHeader = msg.sender !== prevSender;
+    if (showHeader) {
+      if (prevSender) html += '</div>';
+      html += `<div class="msg-group">`;
+      html += `<div class="msg-header"><span class="msg-sender">${escHtml(msg.sender)}</span><span class="msg-time">${timeStr}</span></div>`;
+    }
+
+    html += `<div class="msg-bubble${isOwn ? ' own' : ''}">${escHtml(msg.content)}</div>`;
+    prevSender = msg.sender;
+  });
+
+  if (prevSender) html += '</div>';
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendMessage() {
+  const sender = getSenderName();
+  if (!sender) return;
+  const input = document.getElementById('chat-input');
+  const content = input.value.trim();
+  if (!content || !activeChannelId) return;
+
+  input.value = '';
+
+  try {
+    await sbFetch('/messages', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ channel_id: activeChannelId, sender, content })
+    });
+  } catch(e) {
+    showToast(`Error sending: ${e.message}`);
+    input.value = content;
+  }
+}
+
+function startChatRealtime() {
+  if (chatSocket) return;
+  try {
+    chatSocket = new WebSocket(`${REALTIME_URL}?apikey=${supabaseKey}&vsn=1.0.0`);
+
+    chatSocket.onopen = () => {
+      chatSocket.send(JSON.stringify({
+        topic: 'realtime:public:messages',
+        event: 'phx_join',
+        payload: { config: { broadcast: { self: true }, postgres_changes: [{ event: 'INSERT', schema: 'public', table: 'messages' }] } },
+        ref: '1'
+      }));
+    };
+
+    chatSocket.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.event === 'heartbeat') {
+        chatSocket.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: null }));
+        return;
+      }
+
+      const record = msg.payload?.data?.record || msg.payload?.record;
+      if (!record) return;
+
+      // Only render if message is for the active channel
+      if (record.channel_id === activeChannelId) {
+        chatMessages.push(record);
+        renderMessages();
+      } else {
+        // Unread badge for other channels
+        if (!chatOpen) incrementUnread();
+      }
+    };
+
+    chatSocket.onclose = () => { chatSocket = null; };
+  } catch(e) {
+    console.warn('[Chat Realtime] Failed:', e.message);
+  }
+}
+
+function incrementUnread() {
+  unreadCount++;
+  const badge = document.getElementById('chat-unread');
+  badge.textContent = unreadCount;
+  badge.style.display = 'inline';
+}
+
+function resetUnread() {
+  unreadCount = 0;
+  const badge = document.getElementById('chat-unread');
+  badge.style.display = 'none';
+}
