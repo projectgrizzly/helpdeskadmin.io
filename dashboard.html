@@ -701,7 +701,16 @@ function showToast(msg) {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArticleModal(); });
 
-loadAll();
+loadAll().then(() => {
+  if (window.location.hash === '#kb') {
+    setTimeout(() => {
+      document.querySelector('.content').scrollTo({
+        top: document.getElementById('kb').offsetTop - 24,
+        behavior: 'smooth'
+      });
+    }, 300);
+  }
+});
 </script>
 </body>
 </html>
