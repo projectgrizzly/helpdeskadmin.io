@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HelpDesk — Support Ticketing System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">HD</div>
+      <div>
+        <div class="brand-name">HelpDesk</div>
+        <div class="brand-sub">Support System</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Queue</div>
+      <a class="nav-item active" data-view="all" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        All Tickets
+        <span class="nav-badge" id="badge-all">0</span>
+      </a>
+      <a class="nav-item" data-view="open" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Open
+        <span class="nav-badge" id="badge-open">0</span>
+      </a>
+      <a class="nav-item" data-view="progress" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        In Progress
+      </a>
+      <a class="nav-item" data-view="resolved" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Resolved
+      </a>
+
+      <div class="nav-label" style="margin-top:20px">Priority</div>
+      <a class="nav-item" data-view="urgent" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Urgent
+        <span class="nav-badge urgent" id="badge-urgent">0</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">AI Ready</span>
+      </div>
+      <div class="sync-sub">Powered by Claude</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="search-wrap">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search" placeholder="Search tickets, requesters, categories…" class="search-input">
+      </div>
+      <div class="topbar-actions">
+        <select class="sort-select" id="sort-sel">
+          <option value="newest">Newest first</option>
+          <option value="priority">By priority</option>
+          <option value="status">By status</option>
+        </select>
+        <button class="btn-agent" onclick="openEmployeesPanel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Employees
+        </button>
+        <button class="btn-agent" onclick="openAgentPanel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          AI Agent
+        </button>
+        <button class="btn-new" onclick="openModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Ticket
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <div class="ticket-list" id="ticket-list"></div>
+
+      <div class="detail-pane" id="detail-pane">
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="empty-title">No ticket selected</div>
+          <div class="empty-sub">Choose a ticket from the list to view details and AI analysis</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- New Ticket Modal -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Create New Ticket</div>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Issue Title <span class="required">*</span></label>
+        <input type="text" id="new-title" placeholder="Brief, specific description of the issue">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Requester <span class="required">*</span></label>
+          <input type="text" id="new-requester" placeholder="Name or email">
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="new-category">
+            <option>Hardware</option><option>Software</option><option>Network</option><option>Account</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Priority</label>
+          <select id="new-priority">
+            <option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Assign To</label>
+          <select id="new-assigned">
+            <option value="">— Unassigned —</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="new-desc" placeholder="Detailed description of the issue, steps to reproduce, impact…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-create" onclick="createTicket()">Create Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Panel -->
+<div class="modal-overlay" id="agent-panel" onclick="if(event.target===this)closeAgentPanel()">
+  <div class="modal" style="width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+        <div style="width:22px;height:22px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px">★</div>
+        AI Agent
+      </div>
+      <button class="modal-close" onclick="closeAgentPanel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button class="agent-action-btn" onclick="runAgent('escalate')">
+          <span style="font-size:16px">🚨</span>
+          <div><div style="font-weight:600;font-size:13px">Escalate Urgent</div><div style="font-size:11px;color:var(--text-3)">Flag urgent open tickets</div></div>
+        </button>
+        <button class="agent-action-btn" onclick="runAgent('assign')">
+          <span style="font-size:16px">👤</span>
+          <div><div style="font-weight:600;font-size:13px">Auto-Assign</div><div style="font-size:11px;color:var(--text-3)">Assign unassigned tickets</div></div>
+        </button>
+        <button class="agent-action-btn" onclick="runAgent('replies')">
+          <span style="font-size:16px">✉️</span>
+          <div><div style="font-weight:600;font-size:13px">Generate Replies</div><div style="font-size:11px;color:var(--text-3)">AI replies for open tickets</div></div>
+        </button>
+        <button class="agent-action-btn" onclick="runAgent('report')">
+          <span style="font-size:16px">📊</span>
+          <div><div style="font-weight:600;font-size:13px">Daily Report</div><div style="font-size:11px;color:var(--text-3)">Generate summary report</div></div>
+        </button>
+      </div>
+      <button class="btn-create" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px" onclick="runAgent('all')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run All Agent Tasks
+      </button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px">Agent Log</div>
+      <div id="agent-log-content">
+        <div style="color:var(--text-3);font-size:13px">Run a task to see agent activity here.</div>
+      </div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-3)">Edge function: <code style="font-family:var(--mono)">helpdesk-agent</code> · Runs on Supabase</div>
+    </div>
+  </div>
+</div>
+
+<!-- Employees Panel -->
+<div class="modal-overlay" id="employees-panel" onclick="if(event.target===this)closeEmployeesPanel()">
+  <div class="modal" style="width:580px;max-height:82vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Employees
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-create" style="padding:6px 14px;font-size:12px" onclick="openAddEmployeeModal()">+ Add Employee</button>
+        <button class="modal-close" onclick="closeEmployeesPanel()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      <div id="employees-list" style="padding:8px 0">
+        <div style="padding:20px;text-align:center;color:var(--text-3);font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px"><div class="spinner"></div> Loading…</div>
+      </div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3)">
+      Active employees are available for ticket assignment · Specialties used for AI auto-assign
+    </div>
+  </div>
+</div>
+
+<!-- Add / Edit Employee Modal -->
+<div class="modal-overlay" id="employee-modal" onclick="if(event.target===this)closeAddEmployeeModal()">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title" id="emp-modal-title">Add Employee</div>
+      <button class="modal-close" onclick="closeAddEmployeeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="emp-id">
+      <div class="field-row">
+        <div class="field">
+          <label>Full Name <span class="required">*</span></label>
+          <input type="text" id="emp-name" placeholder="e.g. Jordan K.">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="emp-email" placeholder="name@company.com">
+        </div>
+      </div>
+      <div class="field">
+        <label>Specialties <span style="color:var(--text-3);font-weight:400">(select all that apply)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="specialty-checkboxes">
+          <!-- injected by JS -->
+        </div>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="emp-active">
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeAddEmployeeModal()">Cancel</button>
+      <button class="btn-create" id="emp-save-btn" onclick="saveEmployee()">Add Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
