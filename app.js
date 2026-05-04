@@ -69,19 +69,19 @@ async function patchTicket(id, changes) {
 
 // ── Init ───────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('search').addEventListener('input', filterTickets);
   document.getElementById('sort-sel').addEventListener('change', filterTickets);
 
   document.querySelectorAll('.nav-item').forEach(el => {
     el.addEventListener('click', e => {
-      if (el.getAttribute('href') && el.getAttribute('href') !== '#') return; // let real links navigate
+      if (el.getAttribute('href') && el.getAttribute('href') !== '#') return;
       e.preventDefault();
       setView(el.dataset.view);
     });
   });
 
-  updateSyncStatus();
+  await initAuth();
 
   loadEmployees().then(() => loadTickets()).then(() => {
     startRealtimeSync();
@@ -121,11 +121,14 @@ function startRealtimeSync() {
         const oldRecord = payload?.data?.old_record || payload?.old_record;
 
         if (changeType === 'INSERT' && record) {
-          // New ticket submitted — add to list
           if (!tickets.find(t => t.id === record.id)) {
             tickets.unshift(record);
             filterTickets();
-            showToast(`🎫 New ticket: ${record.id} — ${record.title?.slice(0, 40)}`);
+            if (record.priority === 'Urgent' && shouldNotify('urgent')) {
+              showToast(`🚨 Urgent ticket: ${record.id} — ${record.title?.slice(0, 40)}`);
+            } else {
+              showToast(`🎫 New ticket: ${record.id} — ${record.title?.slice(0, 40)}`);
+            }
           }
         } else if (changeType === 'UPDATE' && record) {
           // Ticket updated externally
@@ -1168,4 +1171,162 @@ function resetUnread() {
   unreadCount = 0;
   const badge = document.getElementById('chat-unread');
   badge.style.display = 'none';
+}
+
+// ── Auth Init ──────────────────────────────────────────────────────────────
+
+async function initAuth() {
+  const ok = await Auth.requireAuth();
+  if (!ok) return;
+
+  const prefs = await Auth.loadPrefs();
+  const user  = Auth.getUser();
+
+  // Update supabaseKey to use auth token for authenticated requests
+  supabaseKey = Auth.getToken();
+
+  // Render user in sidebar
+  const name   = prefs.display_name || user?.email?.split('@')[0] || 'Agent';
+  const email  = user?.email || '';
+  const initials = name.slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-name').textContent   = name;
+  document.getElementById('user-email').textContent  = email;
+
+  // Render saved filters in sidebar
+  renderSavedFilterNav(prefs.saved_filters || []);
+
+  return prefs;
+}
+
+function toggleUserMenu() {
+  const dd = document.getElementById('user-dropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.user-menu')) {
+    const dd = document.getElementById('user-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+// ── Preferences Panel ──────────────────────────────────────────────────────
+
+function openPrefsPanel() {
+  document.getElementById('user-dropdown').style.display = 'none';
+  const prefs = Auth.getPrefs();
+
+  // Populate fields
+  document.getElementById('pref-display-name').value     = prefs.display_name || '';
+  document.getElementById('pref-notify-urgent').checked   = prefs.notify_urgent !== false;
+  document.getElementById('pref-notify-assigned').checked = prefs.notify_assigned !== false;
+  document.getElementById('pref-notify-resolved').checked = !!prefs.notify_resolved;
+  document.getElementById('pref-notify-chat').checked     = prefs.notify_chat !== false;
+
+  renderSavedFiltersList(prefs.saved_filters || []);
+  document.getElementById('prefs-panel').style.display = 'flex';
+}
+
+function closePrefsPanel() {
+  document.getElementById('prefs-panel').style.display = 'none';
+}
+
+function renderSavedFiltersList(filters) {
+  const el = document.getElementById('saved-filters-list');
+  if (!filters.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-3)">No saved filters yet. Add one below.</div>';
+    return;
+  }
+  el.innerHTML = filters.map((f, i) => `
+    <div class="saved-filter-item">
+      <div>
+        <span style="font-weight:500">${escHtml(f.name)}</span>
+        <span style="color:var(--text-3);font-size:11px;margin-left:8px">${f.view}</span>
+      </div>
+      <button onclick="removeSavedFilter(${i})" title="Remove">×</button>
+    </div>
+  `).join('');
+}
+
+function renderSavedFilterNav(filters) {
+  // Remove old filter items
+  document.querySelectorAll('.nav-filter-item').forEach(el => el.remove());
+  const nav  = document.querySelector('.nav');
+  const ref  = document.querySelector('.nav-item[data-view="urgent"]')?.parentElement;
+  if (!filters.length) return;
+
+  const divider = document.createElement('div');
+  divider.className = 'nav-label';
+  divider.style.marginTop = '16px';
+  divider.textContent = 'My Filters';
+  nav.appendChild(divider);
+
+  filters.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'nav-filter-item';
+    el.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      ${escHtml(f.name)}
+    `;
+    el.onclick = () => setView(f.view);
+    nav.appendChild(el);
+  });
+}
+
+function addSavedFilter() {
+  const name = document.getElementById('new-filter-name').value.trim();
+  const view = document.getElementById('new-filter-view').value;
+  if (!name) return;
+
+  const prefs   = Auth.getPrefs();
+  const filters = [...(prefs.saved_filters || []), { name, view }];
+  Auth.getPrefs().saved_filters = filters;
+  renderSavedFiltersList(filters);
+  document.getElementById('new-filter-name').value = '';
+}
+
+function removeSavedFilter(idx) {
+  const prefs   = Auth.getPrefs();
+  const filters = (prefs.saved_filters || []).filter((_, i) => i !== idx);
+  Auth.getPrefs().saved_filters = filters;
+  renderSavedFiltersList(filters);
+}
+
+async function savePreferences() {
+  const display_name     = document.getElementById('pref-display-name').value.trim();
+  const notify_urgent    = document.getElementById('pref-notify-urgent').checked;
+  const notify_assigned  = document.getElementById('pref-notify-assigned').checked;
+  const notify_resolved  = document.getElementById('pref-notify-resolved').checked;
+  const notify_chat      = document.getElementById('pref-notify-chat').checked;
+  const saved_filters    = Auth.getPrefs().saved_filters || [];
+
+  await Auth.savePrefs({ display_name, notify_urgent, notify_assigned, notify_resolved, notify_chat, saved_filters });
+
+  // Update sidebar display name
+  const initials = (display_name || 'A').slice(0,2).toUpperCase();
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-name').textContent   = display_name || Auth.getUser()?.email?.split('@')[0] || 'Agent';
+
+  // Update chat sender name
+  if (display_name) {
+    localStorage.setItem('hd_chat_name', display_name);
+    const chatInput = document.getElementById('chat-sender-name');
+    if (chatInput) chatInput.value = display_name;
+  }
+
+  renderSavedFilterNav(saved_filters);
+  closePrefsPanel();
+  showToast('✓ Preferences saved');
+}
+
+// ── Notification helpers ───────────────────────────────────────────────────
+
+function shouldNotify(type) {
+  const prefs = Auth.getPrefs();
+  if (type === 'urgent')   return prefs.notify_urgent !== false;
+  if (type === 'assigned') return prefs.notify_assigned !== false;
+  if (type === 'resolved') return !!prefs.notify_resolved;
+  if (type === 'chat')     return prefs.notify_chat !== false;
+  return true;
 }

@@ -1185,3 +1185,61 @@ body {
 }
 
 .chat-send-btn:hover { opacity: .85; }
+
+/* ── User Menu ──────────────────────────────────────────────────────────── */
+.user-menu {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer;
+  border-top: 1px solid var(--border);
+  transition: background .12s; position: relative;
+}
+.user-menu:hover { background: var(--surface-2); }
+
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; flex-shrink: 0;
+}
+
+.user-name  { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-email { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.user-dropdown {
+  position: absolute; bottom: 100%; left: 8px; right: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  overflow: hidden; z-index: 50;
+  animation: fade-up .12s ease-out both;
+}
+
+.user-dropdown-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; font-size: 13px; color: var(--text-2);
+  cursor: pointer; transition: background .1s;
+}
+.user-dropdown-item:hover { background: var(--surface-2); color: var(--text); }
+.user-dropdown-item.danger { color: var(--red); }
+.user-dropdown-item.danger:hover { background: var(--red-bg); }
+
+/* ── Saved filter pills ─────────────────────────────────────────────────── */
+.saved-filter-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px;
+}
+.saved-filter-item button {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.saved-filter-item button:hover { color: var(--red); }
+
+/* ── Saved filter nav items ─────────────────────────────────────────────── */
+.nav-filter-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: var(--radius);
+  color: var(--text-2); font-size: 12px; margin-bottom: 1px;
+  cursor: pointer; transition: background .1s;
+}
+.nav-filter-item:hover { background: var(--surface-2); color: var(--text); }

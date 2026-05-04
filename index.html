@@ -58,11 +58,24 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="sync-status">
-        <div class="sync-dot" id="sync-dot"></div>
-        <span id="sync-label">AI Ready</span>
+      <div class="user-menu" onclick="toggleUserMenu()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div style="flex:1;min-width:0">
+          <div class="user-name" id="user-name">Loading…</div>
+          <div class="user-email" id="user-email"></div>
+        </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3);flex-shrink:0"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
       </div>
-      <div class="sync-sub">Powered by Claude</div>
+      <div class="user-dropdown" id="user-dropdown" style="display:none">
+        <div class="user-dropdown-item" onclick="openPrefsPanel()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Preferences
+        </div>
+        <div class="user-dropdown-item danger" onclick="Auth.logout()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign out
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -322,6 +335,73 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- Preferences Panel -->
+<div class="modal-overlay" id="prefs-panel" onclick="if(event.target===this)closePrefsPanel()">
+  <div class="modal" style="width:500px;max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title">My Preferences</div>
+      <button class="modal-close" onclick="closePrefsPanel()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:24px">
+
+      <!-- Display name -->
+      <div>
+        <div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px">Profile</div>
+        <div class="field">
+          <label>Display Name</label>
+          <input type="text" id="pref-display-name" placeholder="Your name shown in chat">
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div>
+        <div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px">Notifications</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${[
+            ['pref-notify-urgent',   'Urgent ticket alerts',       'Alert when a new urgent ticket is created'],
+            ['pref-notify-assigned', 'Assigned to me',             'Alert when a ticket is assigned to you'],
+            ['pref-notify-resolved', 'Ticket resolved',            'Alert when a ticket is marked resolved'],
+            ['pref-notify-chat',     'New chat messages',          'Alert when a new message arrives in chat'],
+          ].map(([id, label, sub]) => `
+            <label style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500">${label}</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">${sub}</div>
+              </div>
+              <input type="checkbox" id="${id}" style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Saved filters -->
+      <div>
+        <div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px">Saved Filters</div>
+        <div id="saved-filters-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <input type="text" id="new-filter-name" placeholder="Filter name…" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--font);background:var(--surface-2);color:var(--text);outline:none">
+          <select id="new-filter-view" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--font);background:var(--surface-2);color:var(--text);outline:none">
+            <option value="all">All Tickets</option>
+            <option value="open">Open</option>
+            <option value="progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="urgent">Urgent</option>
+          </select>
+          <button class="btn-create" style="padding:7px 14px;font-size:12px" onclick="addSavedFilter()">Save</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closePrefsPanel()">Cancel</button>
+      <button class="btn-create" onclick="savePreferences()">Save Preferences</button>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

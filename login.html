@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HelpDesk — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f0f0d; --surface: #1a1a17; --surface-2: #222220; --border: #2e2e2a;
+  --text: #f0efe8; --text-2: #9a9890; --text-3: #5a5955;
+  --accent: #f0efe8; --accent-dim: rgba(240,239,232,0.08);
+  --green: #4ade80; --red: #f87171; --amber: #fbbf24;
+  --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+  --radius: 8px; --radius-lg: 14px;
+}
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; -webkit-font-smoothing: antialiased; }
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 70% 50% at 30% 20%, rgba(240,239,232,0.04) 0%, transparent 60%),
+              radial-gradient(ellipse 50% 40% at 70% 70%, rgba(240,239,232,0.02) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.card {
+  width: 100%; max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  animation: fade-up .4s ease-out both;
+}
+
+@keyframes fade-up { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+
+.brand { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+.brand-icon { width: 36px; height: 36px; background: var(--text); color: var(--bg); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 600; flex-shrink: 0; }
+.brand-name { font-size: 15px; font-weight: 600; }
+.brand-sub { font-size: 12px; color: var(--text-3); }
+
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; letter-spacing: -.01em; }
+.subtitle { font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; }
+.field input {
+  width: 100%; padding: 10px 12px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 14px; font-family: var(--font);
+  color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.field input:focus { border-color: rgba(240,239,232,.3); box-shadow: 0 0 0 3px rgba(240,239,232,.06); }
+.field input::placeholder { color: var(--text-3); }
+
+.btn-submit {
+  width: 100%; padding: 11px;
+  background: var(--text); color: var(--bg);
+  border: none; border-radius: var(--radius);
+  font-size: 14px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; margin-top: 8px;
+  transition: opacity .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-submit:hover { opacity: .88; }
+.btn-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+.error-msg { display: none; padding: 10px 12px; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.2); border-radius: var(--radius); font-size: 13px; color: var(--red); margin-bottom: 14px; }
+.error-msg.show { display: block; }
+
+.spinner { width: 15px; height: 15px; border: 2px solid rgba(15,15,13,.3); border-top-color: var(--bg); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.divider { height: 1px; background: var(--border); margin: 24px 0; }
+.footer-link { text-align: center; font-size: 12px; color: var(--text-3); }
+.footer-link a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--border); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <div class="brand-icon">HD</div>
+    <div>
+      <div class="brand-name">HelpDesk</div>
+      <div class="brand-sub">Admin Portal</div>
+    </div>
+  </div>
+
+  <h1>Welcome back</h1>
+  <p class="subtitle">Sign in to access the help desk</p>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="field">
+    <label>Email address</label>
+    <input type="email" id="email" placeholder="you@company.com" autocomplete="email">
+  </div>
+  <div class="field">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+  </div>
+
+  <button class="btn-submit" id="signin-btn" onclick="signIn()">Sign in</button>
+
+  <div class="divider"></div>
+  <div class="footer-link">New employee? Contact your admin to get access.</div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://xphtitfasgstjvqkkdvs.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwaHRpdGZhc2dzdGp2cWtrZHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDQsImV4cCI6MjA5MzQ5MDMwNH0.sjjsfDCeiEWPih2f3eH5rShhvEZZXgS3ApcSy0B0S-M';
+
+// If already logged in, redirect to admin
+async function checkSession() {
+  const session = JSON.parse(localStorage.getItem('hd_session') || 'null');
+  if (session?.access_token) {
+    // Verify token is still valid
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${session.access_token}` }
+    });
+    if (resp.ok) { window.location.replace('/'); return; }
+    localStorage.removeItem('hd_session');
+  }
+}
+
+checkSession();
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function hideError() {
+  document.getElementById('error-msg').classList.remove('show');
+}
+
+async function signIn() {
+  hideError();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!email)    return showError('Please enter your email.');
+  if (!password) return showError('Please enter your password.');
+
+  const btn = document.getElementById('signin-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Signing in…';
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.error_description || data.msg || 'Invalid email or password');
+    }
+
+    // Save session
+    localStorage.setItem('hd_session', JSON.stringify({
+      access_token:  data.access_token,
+      refresh_token: data.refresh_token,
+      user:          data.user,
+      expires_at:    Date.now() + (data.expires_in * 1000)
+    }));
+
+    window.location.replace('/');
+  } catch(e) {
+    showError(e.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in';
+  }
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') signIn();
+});
+</script>
+</body>
+</html>
