@@ -177,7 +177,7 @@ tr:last-child td { border-bottom: none; }
         Dashboard
       </a>
       <div class="nav-label">Knowledge Base</div>
-      <a class="nav-item" href="#kb" onclick="document.getElementById('kb').scrollIntoView({behavior:'smooth'});return false;">
+      <a class="nav-item" href="#kb" onclick="event.preventDefault();document.querySelector('.content').scrollTo({top:document.getElementById('kb').offsetTop-24,behavior:'smooth'})">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         Troubleshooting Notes
       </a>
