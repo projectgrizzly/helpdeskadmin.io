@@ -1277,21 +1277,19 @@ async function initAuth() {
   if (!ok) return;
 
   const prefs = await Auth.loadPrefs();
-  const user  = Auth.getUser();
+  const agent = Auth.getUser();
 
-  // Update supabaseKey to use auth token for authenticated requests
-  supabaseKey = Auth.getToken();
-
-  // Render user in sidebar
-  const name   = prefs.display_name || user?.email?.split('@')[0] || 'Agent';
-  const email  = user?.email || '';
+  const name    = prefs.display_name || agent?.name || 'Agent';
+  const email   = agent?.email || '';
   const initials = name.slice(0,2).toUpperCase();
   document.getElementById('user-avatar').textContent = initials;
   document.getElementById('user-name').textContent   = name;
   document.getElementById('user-email').textContent  = email;
 
-  // Render saved filters in sidebar
   renderSavedFilterNav(prefs.saved_filters || []);
+
+  // Pre-fill chat sender name
+  if (name) localStorage.setItem('hd_chat_name', name);
 
   return prefs;
 }
@@ -1400,12 +1398,10 @@ async function savePreferences() {
 
   await Auth.savePrefs({ display_name, notify_urgent, notify_assigned, notify_resolved, notify_chat, saved_filters });
 
-  // Update sidebar display name
-  const initials = (display_name || 'A').slice(0,2).toUpperCase();
-  document.getElementById('user-avatar').textContent = initials;
-  document.getElementById('user-name').textContent   = display_name || Auth.getUser()?.email?.split('@')[0] || 'Agent';
+  const name = display_name || Auth.getUser()?.name || 'Agent';
+  document.getElementById('user-avatar').textContent = name.slice(0,2).toUpperCase();
+  document.getElementById('user-name').textContent   = name;
 
-  // Update chat sender name
   if (display_name) {
     localStorage.setItem('hd_chat_name', display_name);
     const chatInput = document.getElementById('chat-sender-name');
