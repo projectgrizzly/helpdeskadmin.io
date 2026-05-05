@@ -1,8 +1,8 @@
 // ── auth.js — simple agent-based auth ─────────────────────────────────────
 
-const SUPABASE_URL  = 'https://xphtitfasgstjvqkkdvs.supabase.co/rest/v1';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwaHRpdGZhc2dzdGp2cWtrZHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDQsImV4cCI6MjA5MzQ5MDMwNH0.sjjsfDCeiEWPih2f3eH5rShhvEZZXgS3ApcSy0B0S-M';
-const SALT          = 'hd_salt_2026';
+const AUTH_SUPABASE_URL  = 'https://xphtitfasgstjvqkkdvs.supabase.co/rest/v1';
+const AUTH_SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwaHRpdGZhc2dzdGp2cWtrZHZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTQzMDQsImV4cCI6MjA5MzQ5MDMwNH0.sjjsfDCeiEWPih2f3eH5rShhvEZZXgS3ApcSy0B0S-M';
+const AUTH_SALT          = 'hd_salt_2026';
 
 window.Auth = (() => {
   let session = null;
@@ -22,7 +22,7 @@ window.Auth = (() => {
   // ── Hashing ──────────────────────────────────────────────────────────────
 
   async function hashPassword(password) {
-    const msg = password + SALT;
+    const msg = password + AUTH_SALT;
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
   }
@@ -36,7 +36,7 @@ window.Auth = (() => {
   }
 
   function getUser() { return getSession()?.agent || null; }
-  function getToken() { return SUPABASE_KEY; }
+  function getToken() { return AUTH_SUPABASE_KEY; }
 
   function isLoggedIn() {
     const s = getSession();
@@ -62,8 +62,8 @@ window.Auth = (() => {
     const hash = await hashPassword(password);
 
     const resp = await fetch(
-      `${SUPABASE_URL}/agents?email=eq.${encodeURIComponent(email)}&password_hash=eq.${hash}&active=eq.true&select=id,name,email,role,specialties`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      `${AUTH_SUPABASE_URL}/agents?email=eq.${encodeURIComponent(email)}&password_hash=eq.${hash}&active=eq.true&select=id,name,email,role,specialties`,
+      { headers: { 'apikey': AUTH_SUPABASE_KEY, 'Authorization': `Bearer ${AUTH_SUPABASE_KEY}` } }
     );
 
     const data = await resp.json();
@@ -73,11 +73,11 @@ window.Auth = (() => {
     const sessionId = crypto.randomUUID();
 
     // Record session in DB
-    await fetch(`${SUPABASE_URL}/sessions`, {
+    await fetch(`${AUTH_SUPABASE_URL}/sessions`, {
       method: 'POST',
       headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'apikey': AUTH_SUPABASE_KEY,
+        'Authorization': `Bearer ${AUTH_SUPABASE_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
@@ -92,9 +92,9 @@ window.Auth = (() => {
     });
 
     // Update last login
-    await fetch(`${SUPABASE_URL}/agents?id=eq.${agent.id}`, {
+    await fetch(`${AUTH_SUPABASE_URL}/agents?id=eq.${agent.id}`, {
       method: 'PATCH',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 'apikey': AUTH_SUPABASE_KEY, 'Authorization': `Bearer ${AUTH_SUPABASE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ last_login: new Date().toISOString() })
     });
 
@@ -106,9 +106,9 @@ window.Auth = (() => {
   // ── Preferences ──────────────────────────────────────────────────────────
 
   async function authFetch(path, opts = {}) {
-    const resp = await fetch(`${SUPABASE_URL}${path}`, {
+    const resp = await fetch(`${AUTH_SUPABASE_URL}${path}`, {
       ...opts,
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+      headers: { 'apikey': AUTH_SUPABASE_KEY, 'Authorization': `Bearer ${AUTH_SUPABASE_KEY}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
     });
     if (resp.status === 204 || resp.headers.get('content-length') === '0') return null;
     const text = await resp.text();
