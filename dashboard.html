@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HelpDesk — Dashboard</title>
+<style>body { visibility: hidden; } body.auth-ready { visibility: visible; }</style>
+<script>
+(function() {
+  var s = JSON.parse(localStorage.getItem('hd_agent_session') || 'null');
+  if (!s || !s.agent || (s.expires_at && Date.now() > s.expires_at)) {
+    localStorage.removeItem('hd_agent_session');
+    window.location.replace('/login');
+  }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -345,6 +355,7 @@ tr:last-child td { border-bottom: none; }
         <div class="topbar-sub" id="last-updated">Loading…</div>
       </div>
       <div class="topbar-actions">
+        <button class="btn-logout" onclick="confirmLogout()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:var(--font);color:var(--text-2);cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Sign out</button>
         <button class="btn" onclick="loadAll()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Refresh
@@ -855,8 +866,11 @@ function showToast(msg) {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArticleModal(); });
 
+function confirmLogout() { if (confirm("Sign out of HelpDesk?")) { Auth.logout(); } }
+
 Auth.requireAuth().then(ok => {
   if (!ok) return;
+  document.body.classList.add('auth-ready');
   loadAll().then(() => {
     if (window.location.hash === '#kb') {
       setTimeout(() => {

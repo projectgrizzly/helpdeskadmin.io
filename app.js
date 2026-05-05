@@ -1289,6 +1289,9 @@ async function initAuth() {
   const ok = await Auth.requireAuth();
   if (!ok) return;
 
+  // Reveal page now that auth is confirmed
+  document.body.classList.add('auth-ready');
+
   const prefs = await Auth.loadPrefs();
   const agent = Auth.getUser();
 
@@ -1305,6 +1308,12 @@ async function initAuth() {
   if (name) localStorage.setItem('hd_chat_name', name);
 
   return prefs;
+}
+
+function confirmLogout() {
+  if (confirm('Sign out of HelpDesk?')) {
+    Auth.logout();
+  }
 }
 
 function toggleUserMenu() {

@@ -1273,3 +1273,17 @@ body {
 
 /* ── Info priority pill ──────────────────────────────────────────────────── */
 .pill-info { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+
+/* ── Logout button ───────────────────────────────────────────────────────── */
+.btn-logout {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px; font-family: var(--font);
+  color: var(--text-2); cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  white-space: nowrap;
+}
+.btn-logout:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
