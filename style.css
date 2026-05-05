@@ -319,6 +319,7 @@ body {
 .pill-urgent { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 .pill-high   { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
 .pill-medium { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.pill-normal { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
 .pill-low    { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
 .pill-open     { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
 .pill-progress { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }

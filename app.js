@@ -967,6 +967,7 @@ function openAddEmployeeModal() {
   document.getElementById('emp-id').value = '';
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-email').value = '';
+  document.getElementById('emp-password').value = '';
   document.getElementById('emp-active').value = 'true';
   document.getElementById('specialty-checkboxes').innerHTML = buildSpecialtyCheckboxes();
   document.getElementById('emp-modal-title').textContent = 'Add Employee';
@@ -981,6 +982,7 @@ function openEditEmployeeModal(id) {
   document.getElementById('emp-id').value = e.id;
   document.getElementById('emp-name').value = e.name;
   document.getElementById('emp-email').value = e.email || '';
+  document.getElementById('emp-password').value = '';
   document.getElementById('emp-active').value = String(e.active);
   document.getElementById('specialty-checkboxes').innerHTML = buildSpecialtyCheckboxes(e.specialties || []);
   document.getElementById('emp-modal-title').textContent = 'Edit Employee';
@@ -999,16 +1001,27 @@ async function saveEmployee() {
 
   const payload = {
     name,
-    email: document.getElementById('emp-email').value.trim(),
+    email:       document.getElementById('emp-email').value.trim(),
     specialties: getSelectedSpecialties(),
-    active: document.getElementById('emp-active').value === 'true'
+    active:      document.getElementById('emp-active').value === 'true'
   };
+
+  // Hash password if provided
+  const newPassword = document.getElementById('emp-password')?.value;
+  if (newPassword && newPassword.trim()) {
+    payload.password_hash = await Auth.hashPassword(newPassword.trim());
+  }
 
   try {
     if (id) {
       await sbFetch(`/agents?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       showToast(`✓ ${name} updated`);
     } else {
+      // New employee needs a password
+      if (!newPassword || !newPassword.trim()) {
+        showToast('Please set a password for the new employee');
+        return;
+      }
       await sbFetch('/agents', {
         method: 'POST',
         headers: { 'Prefer': 'return=representation' },
